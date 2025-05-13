@@ -94,7 +94,7 @@ def focal2fov(focal, pixels):
 
 
 # the following functions depths_double_to_points and depth_double_to_normal are adopted from https://github.com/hugoycj/2dgs-gaustudio/blob/main/utils/graphics_utils.py
-def depths_double_to_points(view, depthmap1, depthmap2):
+def depths_double_to_points(view, depthmap1, depthmap2): #Normal estimated by gradient of depth maps
     W, H = view.image_width, view.image_height
     fx = W / (2 * math.tan(view.FoVx / 2.))
     fy = H / (2 * math.tan(view.FoVy / 2.))

@@ -109,7 +109,7 @@ def marching_tetrahedra_with_binary_search(model_path, name, iteration, views, g
     mesh.update_vertices(vertice_mask)
     mesh.update_faces(face_mask)
 
-    mesh.export(os.path.join(model_path,"recon.ply"))
+    mesh.export(os.path.join(model_path,"recon_tetrahedra.ply"))
 
     
 
@@ -117,8 +117,11 @@ def extract_mesh(dataset : ModelParams, iteration : int, pipeline : PipelinePara
     with torch.no_grad():
         gaussians = GaussianModel(dataset.sh_degree)
         scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False)
-        
+        point_cloud_path = os.path.join(dataset.model_path, "point_cloud", f"iteration_{iteration}")
+                
         gaussians.load_ply(os.path.join(dataset.model_path, "point_cloud", f"iteration_{iteration}", "point_cloud.ply"))
+
+        #gaussians.load_ply(os.path.join(point_cloud_path, "point_cloud.ply"), os.path.join(point_cloud_path, "params.npy"))
         
         bg_color = [1,1,1] if dataset.white_background else [0, 0, 0]
         background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")

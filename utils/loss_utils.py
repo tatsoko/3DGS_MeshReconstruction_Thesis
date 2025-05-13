@@ -13,6 +13,8 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
 from math import exp
+from utils.image_utils import erode
+import numpy as np
 
 def l1_loss(network_output, gt):
     return torch.abs((network_output - gt)).mean()
@@ -82,7 +84,76 @@ def _ncc(img1, img2, window, window_size, channel, size_average=True):
 
     return torch.mean(ncc, dim=2)
 
-    
+def zero_one_loss(img):
+    zero_epsilon = 1e-3
+    val = torch.clamp(img, zero_epsilon, 1 - zero_epsilon)
+    loss = torch.mean(torch.log(val) + torch.log(1 - val))
+    return loss
+
+def predicted_normal_loss(normal, normal_ref, alpha=None):
+    """Computes the predicted normal supervision loss defined in ref-NeRF."""
+    # normal: (3, H, W), normal_ref: (3, H, W), alpha: (3, H, W)
+    if alpha is not None:
+        device = alpha.device
+        weight = alpha.detach().cpu().numpy()[0]
+        weight = (weight*255).astype(np.uint8)
+
+        weight = erode(weight, erode_size=4)
+
+        weight = torch.from_numpy(weight.astype(np.float32)/255.)
+        weight = weight[None,...].repeat(3,1,1)
+        weight = weight.to(device) 
+    else:
+        weight = torch.ones_like(normal_ref)
+
+    w = weight.permute(1,2,0).reshape(-1,3)[...,0].detach()
+    n = normal_ref.permute(1,2,0).reshape(-1,3).detach()
+    n_pred = normal.permute(1,2,0).reshape(-1,3)
+    loss = (w * (1.0 - torch.sum(n * n_pred, axis=-1))).mean()
+
+    return loss
+
+def delta_normal_loss(delta_normal_norm, alpha=None):
+    # delta_normal_norm: (3, H, W), alpha: (3, H, W)
+    #print("deltra norm size:", delta_normal_norm.shape)
+    #print("alpha size:", alpha.shape)
+    if alpha is not None:
+        device = alpha.device
+        weight = alpha.detach().cpu().numpy()[0]
+        weight = (weight*255).astype(np.uint8)
+
+        weight = erode(weight, erode_size=4)
+
+        weight = torch.from_numpy(weight.astype(np.float32)/255.)
+        weight = weight[None,...].repeat(3,1,1)
+        weight = weight.to(device) 
+    else:
+        weight = torch.ones_like(delta_normal_norm)
+
+    w = weight.permute(1,2,0).reshape(-1,3)[...,0].detach()
+    l = delta_normal_norm.permute(1,2,0).reshape(-1,3)[...,0]
+    loss = (w * l).mean()
+
+    return loss
+
+def cam_depth2world_point(cam_z, pixel_idx, intrinsic, extrinsic):
+    '''
+    cam_z: (1, N)
+    pixel_idx: (1, N, 2)
+    intrinsic: (3, 3)
+    extrinsic: (4, 4)
+    world_xyz: (1, N, 3)
+    '''
+    valid_x = (pixel_idx[..., 0] + 0.5 - intrinsic[0, 2]) / intrinsic[0, 0]
+    valid_y = (pixel_idx[..., 1] + 0.5 - intrinsic[1, 2]) / intrinsic[1, 1]
+    ndc_xy = torch.stack([valid_x, valid_y], dim=-1)
+    # inv_scale = torch.tensor([[W - 1, H - 1]], device=cam_z.device)
+    # cam_xy = ndc_xy * inv_scale * cam_z[...,None]
+    cam_xy = ndc_xy * cam_z[...,None]
+    cam_xyz = torch.cat([cam_xy, cam_z[...,None]], dim=-1)
+    world_xyz = torch.cat([cam_xyz, torch.ones_like(cam_xyz[...,0:1])], axis=-1) @ torch.inverse(extrinsic).transpose(0,1)
+    world_xyz = world_xyz[...,:3]
+    return world_xyz, cam_xyz   
 # def _ncc(pred, gt, window, channel):
 #     ntotpx, nviews, nc, h, w = pred.shape
 #     flat_pred = pred.view(-1, nc, h, w)

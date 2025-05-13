@@ -46,7 +46,7 @@ class ParamGroup:
 
 class ModelParams(ParamGroup): 
     def __init__(self, parser, sentinel=False):
-        self.sh_degree = 3
+        self.sh_degree = -1
         self._source_path = ""
         self._model_path = ""
         self._images = "images"
@@ -57,20 +57,28 @@ class ModelParams(ParamGroup):
         self.eval = False
         self.use_decoupled_appearance = False
         self.use_coord_map = False
-        self.disable_filter3D = False
+        self.disable_filter3D = True
+        self.brdf_dim = 0
+        self.brdf_mode = "envmap"
+        self.brdf_envmap_res = 512
         self.kernel_size = 0.0 # Size of 2D filter in mip-splatting
         super().__init__(parser, "Loading Parameters", sentinel)
 
     def extract(self, args):
         g = super().extract(args)
         g.source_path = os.path.abspath(g.source_path)
+        g.brdf = args.brdf_dim>=0
+        if g.brdf:
+            g.convert_SHs_python = True
+        g.brdf_mode = args.brdf_mode
         return g
 
 class PipelineParams(ParamGroup):
     def __init__(self, parser):
-        self.convert_SHs_python = False
+        self.convert_SHs_python = True
         self.compute_cov3D_python = False
         self.debug = False
+        self.brdf = True
         super().__init__(parser, "Pipeline Parameters")
 
 class OptimizationParams(ParamGroup):
@@ -81,21 +89,36 @@ class OptimizationParams(ParamGroup):
         self.position_lr_delay_mult = 0.01
         self.position_lr_max_steps = 30_000
         self.feature_lr = 0.0025
+        self.feature_lr_final = 0.000025
         self.opacity_lr = 0.05
-        self.scaling_lr = 0.005
+        self.scaling_lr = 0.001 
         self.rotation_lr = 0.001
         self.appearance_embeddings_lr = 0.001
         self.appearance_network_lr = 0.001
-        self.percent_dense = 0.01
+        self.percent_dense = 0.01 # change 0.02 last uninmportant
         self.lambda_dssim = 0.2
-        self.lambda_depth_normal = 0.05
-        self.densification_interval = 100
+        self.densification_interval = 100 #100 #change 50
         self.opacity_reset_interval = 3000
         self.densify_from_iter = 500
         self.densify_until_iter = 15_000
         self.regularization_from_iter = 15_000
-        self.densify_grad_threshold = 0.0002
-
+        self.densify_grad_threshold = 0.0002 # change  1e-4
+        self.brdf_mlp_lr_init = 1.6e-2
+        self.brdf_mlp_lr_final = 1.6e-3
+        self.brdf_mlp_lr_delay_mult = 0.01
+        self.brdf_mlp_lr_max_steps = 30_000
+        self.normal_lr = 0.0002
+        self.specular_lr = 0.0002
+        self.roughness_lr = 0.0002
+        self.normal_reg_from_iter = 15_000
+        self.normal_reg_util_iter = 30_000
+        self.lambda_zero_one = 1e-3
+        self.lambda_predicted_normal = 0.05 #change  2e-1  normal depth coeffisient
+        self.lambda_delta_reg = 1e-3
+        self.fix_brdf_lr = 0
+        self.opacity_threshold = 0.005 #radegs 0.05
+        self.size_threshold = 20 #change 40 
+        self.disable_reg_loss = False
         super().__init__(parser, "Optimization Parameters")
 
 def get_combined_args(parser : ArgumentParser):

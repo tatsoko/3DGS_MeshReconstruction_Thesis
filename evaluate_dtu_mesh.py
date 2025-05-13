@@ -61,7 +61,7 @@ def load_dtu_camera(DTU):
     # Load projection matrix from file.
     camtoworlds = []
     for i in range(1, 64+1):
-        fname = path.join(DTU, f'Calibration/cal18/pos_{i:03d}.txt')
+        fname = path.join(DTU, f'Calibration/cal18/pos_{i:03d}.txt') #/home/ge85bam/RaDe-GS/dtu_eval/Offical_DTU_Dataset/SampleSet/MVS Data/Calibration/cal18/pos_001.txt
 
         projection = np.loadtxt(fname, dtype=np.float32)
 
@@ -166,7 +166,7 @@ def evaluate_mesh(dataset : ModelParams, iteration : int, DTU_PATH : str):
 
     # load mesh
     # mesh_file = os.path.join(dataset.model_path, "test/ours_{}".format(iteration), mesh_dir, filename)
-    mesh_file = os.path.join(dataset.model_path, "recon.ply")
+    mesh_file = os.path.join(dataset.model_path, "recon_tsdf_radegs.ply")
     print("load")
     mesh = trimesh.load(mesh_file)
     
@@ -203,7 +203,7 @@ if __name__ == "__main__":
     parser.add_argument("--skip_test", action="store_true")
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument('--scan_id', type=str,  help='scan id of the input mesh')
-    parser.add_argument('--DTU', type=str,  default='dtu_eval/Offical_DTU_Dataset', help='path to the GT DTU point clouds')
+    parser.add_argument('--DTU', type=str,  default='dtu_eval/Offical_DTU_Dataset/SampleSet/MVSData', help='path to the GT DTU point clouds')
     
     args = get_combined_args(parser)
     print("evaluating " + args.model_path)
